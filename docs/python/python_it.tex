@@ -1,0 +1,217 @@
+\documentclass[11pt,a4paper]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage[italian]{babel}
+\usepackage{amsmath,amssymb}
+\usepackage[margin=2.4cm]{geometry}
+\usepackage{booktabs}
+\usepackage{xcolor}
+\usepackage{listings}
+\usepackage{hyperref}
+\newcommand{\norm}[1]{\left\lVert #1 \right\rVert}
+
+\lstset{language=Python, basicstyle=\ttfamily\small, keywordstyle=\color{blue!70!black}\bfseries,
+  commentstyle=\color{green!40!black}\itshape, stringstyle=\color{red!60!black}, frame=single,
+  backgroundcolor=\color{gray!6}, columns=fullflexible, keepspaces=true, showstringspaces=false,
+  upquote=true, literate={è}{{\`e}}1 {à}{{\`a}}1 {ù}{{\`u}}1 {ò}{{\`o}}1 {ì}{{\`i}}1}
+
+\title{Python e numpy per l'Assignment 4\\\large Guida passo passo, cresce con il progetto}
+\author{Filippo Ferroni}
+\date{Versione 1.1, 25 ottobre 2026 --- Lezione 1: funzioni e algebra lineare}
+
+\begin{document}
+\maketitle
+
+\paragraph{Come usare questa guida.}
+Ogni lezione corrisponde a un pezzo del progetto. Si impara solo il Python che serve, nel momento in cui serve.
+Alla fine di ogni lezione ci sono esercizi; le soluzioni dei TODO del progetto vengono aggiunte \emph{dopo} che li hai scritti tu.
+
+\tableofcontents
+
+%--------------------------------------------------------------------
+\section{La mappa del progetto}
+\begin{center}
+\begin{tabular}{@{}lll@{}}
+\toprule
+File & Cosa fa & Lezione \\
+\midrule
+\texttt{src/models.py} & least squares, ridge, errore quadratico medio & 1 (questa) \\
+\texttt{src/data.py} & genera dati sintetici, carica il dataset reale, split train/test & 2 \\
+\texttt{src/experiment.py} & ciclo su $d$: addestra e misura gli errori & 3 \\
+\texttt{src/plots.py} & grafici con matplotlib & 4 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+%--------------------------------------------------------------------
+\section{Eseguire un file Python}
+\begin{itemize}
+  \item Un file \texttt{.py} è testo con istruzioni eseguite dall'alto verso il basso.
+  \item Dal terminale, dentro la cartella del repo:
+\begin{lstlisting}
+python src/models.py
+\end{lstlisting}
+        (su Mac a volte il comando è \texttt{python3}).
+  \item In VS Code: apri la cartella \texttt{smml-double-descent}, apri il file, poi usa il pulsante ``Run'' in alto a destra.
+  \item Le righe che iniziano con \texttt{\#} sono \textbf{commenti}: Python le ignora, servono a chi legge.
+\end{itemize}
+
+%--------------------------------------------------------------------
+\section{Variabili e \texttt{print}}
+\begin{lstlisting}
+m = 3              # un numero intero
+alpha = 0.1        # un numero decimale (si usa il punto, non la virgola)
+nome = "ridge"     # una stringa (testo)
+print("alpha vale", alpha)
+\end{lstlisting}
+Il segno \texttt{=} \textbf{assegna} un valore a un nome; non è un'uguaglianza matematica.
+
+%--------------------------------------------------------------------
+\section{Funzioni}
+Una funzione è una ricetta: riceve degli input, fa dei calcoli, restituisce un risultato.
+\begin{lstlisting}
+def quadrato(x):
+    """Restituisce x al quadrato."""   # docstring: spiega cosa fa
+    risultato = x ** 2                 # ** e' la potenza
+    return risultato
+
+print(quadrato(4))   # stampa 16
+\end{lstlisting}
+\begin{itemize}
+  \item \texttt{def} definisce la funzione; tra parentesi gli \textbf{argomenti} (input).
+  \item Il corpo è \textbf{rientrato di 4 spazi}. Il rientro dice a Python quali righe appartengono alla funzione.
+        Se è sbagliato: \texttt{IndentationError}.
+  \item \texttt{return} restituisce il risultato. Senza \texttt{return}, la funzione restituisce \texttt{None} (``niente'').
+  \item \texttt{raise NotImplementedError} vuol dire ``non ancora scritto'': lo trovi nei TODO, va sostituito con il tuo codice.
+\end{itemize}
+
+\paragraph{Il blocco \texttt{if \_\_name\_\_ == "\_\_main\_\_":}}
+Il codice sotto questa riga viene eseguito solo quando lanci il file direttamente (\texttt{python src/models.py}),
+non quando un altro file fa \texttt{import} di \texttt{models.py}. Lo usiamo per i controlli rapidi.
+
+%--------------------------------------------------------------------
+\section{numpy: vettori e matrici}
+\begin{lstlisting}
+import numpy as np        # importa numpy con il nome breve np
+
+y = np.array([1.0, 2.0, 3.0])            # vettore con 3 elementi
+X = np.array([[1.0, 0.0],
+              [1.0, 1.0],
+              [1.0, 2.0]])               # matrice 3 x 2 (3 righe, 2 colonne)
+
+print(X.shape)       # (3, 2)
+print(X.shape[0])    # 3 = numero di righe = m
+print(X.shape[1])    # 2 = numero di colonne = d
+print(X[0])          # prima riga: [1. 0.]   (si conta da 0!)
+print(X[2, 1])       # riga 3, colonna 2: 2.0
+\end{lstlisting}
+\textbf{Attenzione:} Python conta da $0$. Il primo elemento è \texttt{[0]}, non \texttt{[1]}.
+
+%--------------------------------------------------------------------
+\section{Operazioni: elemento per elemento vs prodotto matriciale}
+\begin{center}
+\begin{tabular}{@{}lll@{}}
+\toprule
+Matematica & numpy & Note \\
+\midrule
+$A + B$ & \texttt{A + B} & elemento per elemento, stesse dimensioni \\
+$\alpha A$ & \texttt{alpha * A} & moltiplica ogni elemento per $\alpha$ \\
+$v_i^2$ per ogni $i$ & \texttt{v ** 2} & potenza elemento per elemento \\
+$AB$ (prodotto matriciale) & \texttt{A @ B} & \textbf{non} \texttt{A * B}! \\
+$A^\top$ & \texttt{A.T} & trasposta \\
+$I_d$ & \texttt{np.eye(d)} & identità $d\times d$ \\
+$\frac{1}{m}\sum_i v_i$ & \texttt{np.mean(v)} & media degli elementi \\
+$\norm{w}$ & \texttt{np.linalg.norm(w)} & norma euclidea \\
+$A^{+}$ & \texttt{np.linalg.pinv(A)} & pseudo-inversa \\
+risolvi $Aw = b$ & \texttt{np.linalg.solve(A, b)} & meglio che calcolare $A^{-1}$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+\textbf{Errore classico:} \texttt{A * B} moltiplica elemento per elemento, \emph{non} è il prodotto righe per colonne.
+Per le formule delle slide serve quasi sempre \texttt{@}.
+
+\paragraph{La regola delle dimensioni.}
+\texttt{A @ B} funziona solo se il numero di colonne di \texttt{A} è uguale al numero di righe di \texttt{B}:
+$(p\times q)\,@\,(q\times r) = (p\times r)$. Se non torna, numpy dà un errore che contiene la parola \texttt{mismatch}.
+\textbf{Prima di scrivere una riga, controlla le dimensioni a mano.}
+
+%--------------------------------------------------------------------
+\section{Dalla formula al codice: il metodo in 4 passi}
+\begin{enumerate}
+  \item Scrivi la formula matematica.
+  \item Dai un nome a ogni pezzo (es.\ $A$, $b$).
+  \item Traduci ogni simbolo con la tabella della sezione precedente.
+  \item Restituisci il risultato con \texttt{return}.
+\end{enumerate}
+
+\subsection{Esempio svolto: la ridge (TODO 2)}
+Formula (slide 9, p.~5): $(\alpha I + X^\top X)\,w = X^\top y$, cioè $A w = b$ con $A = \alpha I + X^\top X$, $b = X^\top y$.
+\begin{lstlisting}
+def fit_ridge(X, y, alpha):
+    d = X.shape[1]                     # numero di feature (colonne di X)
+    A = alpha * np.eye(d) + X.T @ X    # matrice d x d
+    b = X.T @ y                        # vettore con d elementi
+    w = np.linalg.solve(A, b)          # risolve A w = b
+    return w
+\end{lstlisting}
+Controllo delle dimensioni con $X$ di forma $m\times d$ e $y$ con $m$ elementi:
+\begin{itemize}
+  \item \texttt{np.eye(d)}: $d\times d$; \quad \texttt{X.T @ X}: $(d\times m)(m\times d) = d\times d$; \quad somma: $d \times d$. \checkmark
+  \item \texttt{X.T @ y}: $(d\times m)(m) = d$. \checkmark
+  \item \texttt{solve}: da una matrice $d\times d$ e un vettore $d$ restituisce $w$ con $d$ elementi. \checkmark
+\end{itemize}
+
+%--------------------------------------------------------------------
+\section{Errori frequenti e cosa vogliono dire}
+\begin{center}
+\begin{tabular}{@{}p{5.2cm}p{9.3cm}@{}}
+\toprule
+Messaggio & Causa probabile \\
+\midrule
+\texttt{IndentationError} & rientro sbagliato (usa 4 spazi, non mescolare tab e spazi) \\
+\texttt{NameError: name 'np' is not defined} & manca \texttt{import numpy as np} in cima al file \\
+\texttt{NotImplementedError} & hai lasciato la riga \texttt{raise NotImplementedError} nel TODO \\
+\texttt{ValueError: matmul: ... mismatch} & dimensioni incompatibili in un \texttt{@}: controlla le forme \\
+\texttt{LinAlgError: Singular matrix} & \texttt{solve} con una matrice non invertibile (es.\ ridge con $\alpha=0$ e $d>m$) \\
+\texttt{ModuleNotFoundError: numpy} & numpy non installato: \texttt{pip install -r requirements.txt} \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+%--------------------------------------------------------------------
+\section{Esercizi della lezione 1}
+\begin{enumerate}
+  \item Con $X$ di forma $3\times 2$: perché \texttt{X @ X} dà errore, mentre \texttt{X.T @ X} funziona? Che forma ha il risultato?
+  \item Che differenza c'è tra \texttt{X.T @ X} e \texttt{X @ X.T}? Che forme hanno con $m=3$, $d=2$?
+        (Indizio: una delle due compare nella formula della minima norma, teoria sez.~4.3.)
+  \item Che cosa stampa \texttt{np.array([1.0, -2.0, 3.0]) ** 2}? E \texttt{np.mean} di quel risultato?
+  \item \textbf{TODO 1} di \texttt{models.py}: traduci $w = X^{+}y$ con il metodo in 4 passi.
+  \item \textbf{TODO 3} di \texttt{models.py}: traduci $\frac{1}{m}\norm{Xw - y}^2$. (Indizio: prima il vettore degli errori, poi la media dei quadrati.)
+\end{enumerate}
+
+\subsection*{Soluzioni (esercizi 1--3)}
+\begin{enumerate}
+  \item \texttt{X @ X} richiede colonne di $X$ ($2$) $=$ righe di $X$ ($3$): falso, quindi errore.
+        \texttt{X.T @ X} è $(2\times 3)(3\times 2) = 2\times 2$.
+  \item \texttt{X.T @ X} è $d\times d = 2\times 2$ (equazioni normali, ridge); \texttt{X @ X.T} è $m\times m = 3\times 3$
+        (compare in $w^{+} = X^\top(XX^\top)^{-1}y$).
+  \item \texttt{[1. 4. 9.]}; la media è $14/3 \approx 4.67$.
+\end{enumerate}
+\subsection*{Soluzioni dei TODO (scritte da te, corrette il 25/10)}
+\begin{lstlisting}
+def fit_least_squares(X, y):
+    w = np.linalg.pinv(X) @ y          # w = X^+ y, minima norma per ogni d
+    return w
+
+def mse(X, y, w):
+    y_hat = X @ w                      # predizioni sul set (m valori)
+    error = np.mean((y_hat - y) ** 2)  # media dei quadrati degli errori
+    return error
+\end{lstlisting}
+Output dei controlli: A $=[1,1]$, B $=[1,10]$, C $\approx[1.0,\,0.01]$, D $\approx 2\cdot10^{-32}$ (zero numerico: il
+computer lavora con circa 16 cifre significative, quindi un valore così piccolo è uno zero).
+\textbf{Lezione dal check C:} sugli stessi dati la minima norma mette un peso pari a $10$, la ridge $0.01$:
+è il meccanismo che elimina il picco, visto sul tuo codice.
+
+\end{document}
