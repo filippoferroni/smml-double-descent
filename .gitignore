@@ -1,0 +1,14 @@
+# LaTeX build files
+*.aux
+*.log
+*.out
+*.toc
+*.synctex.gz
+*.fdb_latexmk
+*.fls
+# Python
+__pycache__/
+.ipynb_checkpoints/
+.venv/
+# macOS
+.DS_Store
