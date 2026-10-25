@@ -39,7 +39,6 @@ def first_features(X, d):
     # TODO 3: return the first d columns of X.
     # Hint: slicing X[:, :d] means "all rows, columns from 0 to d-1".
     return X[:, :d]
-    raise NotImplementedError
 
 
 if __name__ == "__main__":
