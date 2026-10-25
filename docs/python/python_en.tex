@@ -18,7 +18,7 @@
 
 \title{Python and numpy for Assignment 4\\\large Step-by-step guide, grows with the project}
 \author{Filippo Ferroni}
-\date{Version 1.1, 25 October 2026 --- Lesson 1: functions and linear algebra}
+\date{Version 1.2, 25 October 2026 --- Lessons 1--2: functions, linear algebra, random data}
 
 \begin{document}
 \maketitle
@@ -213,5 +213,76 @@ Check outputs: A $=[1,1]$, B $=[1,10]$, C $\approx[1.0,\,0.01]$, D $\approx 2\cd
 works with about 16 significant digits, so such a tiny value is a zero).
 \textbf{Lesson from check C:} on the same data the minimum-norm solution puts a weight of $10$, ridge $0.01$:
 this is the mechanism that removes the peak, seen on your own code.
+
+%====================================================================
+\section{Lesson 2: generating data (\texttt{src/data.py})}
+\paragraph{Why.} To see double descent we need data whose ``truth'' we know:
+$y = w^{*\top}x + \text{noise}$, with $x \in \mathbb{R}^D$ ($D=500$ ``weak'' features), $m=100$ training examples
+and $2000$ test examples. The model uses only the first $d$ features: growing $d$ from $1$ to $500$ crosses the threshold $d=m$.
+
+\subsection{Reproducible random numbers: the seed}
+\begin{lstlisting}
+rng = np.random.default_rng(42)   # generator with seed 42
+a = rng.normal(size=3)            # 3 numbers from N(0,1)
+\end{lstlisting}
+\begin{itemize}
+  \item \texttt{rng} is a ``generator'' object. The same seed \textbf{always} gives the same sequence: reproducible experiments
+        (an assignment requirement).
+  \item \texttt{rng.normal(size=...)} draws from a standard normal $N(0,1)$. \texttt{size} sets the shape:
+        \texttt{size=5} gives a vector of 5 values, \texttt{size=(100, 500)} a $100\times 500$ matrix (a \textbf{tuple} in round brackets).
+  \item Noise with standard deviation $\sigma$: \texttt{sigma * rng.normal(size=m)}, because if $Z\sim N(0,1)$ then $\sigma Z \sim N(0,\sigma^2)$.
+\end{itemize}
+
+\subsection{Normalizing a vector}
+\texttt{w\_star / np.linalg.norm(w\_star)} divides every entry by the norm: the result has norm $1$.
+So the signal $w^{*\top}x$ has variance $1$ and the signal-to-noise ratio is controlled by $\sigma$ alone.
+
+\subsection{Slicing: taking a piece of a matrix}
+\begin{center}
+\begin{tabular}{@{}ll@{}}
+\toprule
+Code & Meaning \\
+\midrule
+\texttt{X[:, :d]} & all rows, columns $0$ to $d-1$ (the first $d$ features) \\
+\texttt{X[:10]} & the first 10 rows \\
+\texttt{X[:, 0]} & the first column (a vector) \\
+\texttt{X[5:, 2:4]} & rows from 5 on, columns 2 and 3 \\
+\bottomrule
+\end{tabular}
+\end{center}
+Rule: \texttt{a:b} includes \texttt{a} and \textbf{excludes} \texttt{b}; a bare \texttt{:} means ``everything''.
+
+\subsection{Returning several values}
+\begin{lstlisting}
+return X_train, y_train, X_test, y_test, w_star        # inside the function
+X_tr, y_tr, X_te, y_te, w = make_synthetic(100, 2000, 500, 0.5, 0)   # caller
+\end{lstlisting}
+Python packs the values into a tuple and ``unpacks'' them in the order you wrote them.
+
+\subsection{Why check C gives about 0.25}
+With $\sigma = 0.5$ even the true $w^*$ is off by $\sigma^2 = 0.25$ on average: this is the \textbf{Bayes risk}
+for the square loss (statRisk p.~1--2). No model can do better on the test set: in the plots it is the horizontal reference line.
+The exact value ($0.256$) fluctuates a little because the test set is finite.
+
+\subsection*{Lesson 2 exercises}
+\begin{enumerate}
+  \item What is the shape of \texttt{rng.normal(size=(3, 4))}? And of \texttt{X[:, :2]} if $X$ is $3\times4$?
+  \item Why do we draw the test set with the \emph{same} \texttt{rng} but \emph{after} the training set? What does it guarantee?
+  \item With \texttt{noise\_std=1.0}, what should check C approach?
+\end{enumerate}
+\subsection*{Solutions}
+\begin{enumerate}
+  \item $(3,4)$; $(3,2)$.
+  \item The draws are independent: no example is shared between train and test (no data leakage), and the seed keeps everything reproducible.
+  \item $1$ ($=\sigma^2$).
+\end{enumerate}
+\subsection*{TODO solutions (written by you, checked on 25/10)}
+\begin{lstlisting}
+X_train = rng.normal(size=(m, D))                             # TODO 1
+y_train = X_train @ w_star + noise_std * rng.normal(size=m)  # TODO 2
+return X[:, :d]                                               # TODO 3
+\end{lstlisting}
+Output: A correct shapes, B $(100,30)$, C $0.2564$, D \texttt{True}.
+\textbf{Clean-up:} the \texttt{raise NotImplementedError} line left after the \texttt{return} never runs (dead code): delete it.
 
 \end{document}

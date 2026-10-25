@@ -18,7 +18,7 @@
 
 \title{Python e numpy per l'Assignment 4\\\large Guida passo passo, cresce con il progetto}
 \author{Filippo Ferroni}
-\date{Versione 1.1, 25 ottobre 2026 --- Lezione 1: funzioni e algebra lineare}
+\date{Versione 1.2, 25 ottobre 2026 --- Lezioni 1--2: funzioni, algebra lineare, dati casuali}
 
 \begin{document}
 \maketitle
@@ -213,5 +213,76 @@ Output dei controlli: A $=[1,1]$, B $=[1,10]$, C $\approx[1.0,\,0.01]$, D $\appr
 computer lavora con circa 16 cifre significative, quindi un valore così piccolo è uno zero).
 \textbf{Lezione dal check C:} sugli stessi dati la minima norma mette un peso pari a $10$, la ridge $0.01$:
 è il meccanismo che elimina il picco, visto sul tuo codice.
+
+%====================================================================
+\section{Lezione 2: generare dati (\texttt{src/data.py})}
+\paragraph{A cosa serve.} Per vedere il double descent servono dati di cui conosciamo la ``verità'':
+$y = w^{*\top}x + \text{rumore}$, con $x \in \mathbb{R}^D$ ($D=500$ feature ``deboli''), $m=100$ esempi di training
+e $2000$ di test. Il modello userà solo le prime $d$ feature: facendo crescere $d$ da $1$ a $500$ attraversiamo la soglia $d=m$.
+
+\subsection{Numeri casuali riproducibili: il seed}
+\begin{lstlisting}
+rng = np.random.default_rng(42)   # generatore con seed 42
+a = rng.normal(size=3)            # 3 numeri da N(0,1)
+\end{lstlisting}
+\begin{itemize}
+  \item \texttt{rng} è un oggetto ``generatore''. Lo stesso seed produce \textbf{sempre} la stessa sequenza: esperimenti riproducibili
+        (requisito dell'assignment).
+  \item \texttt{rng.normal(size=...)} estrae da una normale standard $N(0,1)$. \texttt{size} decide la forma:
+        \texttt{size=5} dà un vettore di 5 valori, \texttt{size=(100, 500)} una matrice $100\times 500$ (una \textbf{tupla} tra parentesi tonde).
+  \item Rumore con deviazione standard $\sigma$: \texttt{sigma * rng.normal(size=m)}, perché se $Z\sim N(0,1)$ allora $\sigma Z \sim N(0,\sigma^2)$.
+\end{itemize}
+
+\subsection{Normalizzare un vettore}
+\texttt{w\_star / np.linalg.norm(w\_star)} divide ogni componente per la norma: il risultato ha norma $1$.
+Così il segnale $w^{*\top}x$ ha varianza $1$ e il rapporto segnale/rumore è controllato solo da $\sigma$.
+
+\subsection{Slicing: prendere un pezzo di matrice}
+\begin{center}
+\begin{tabular}{@{}ll@{}}
+\toprule
+Codice & Significato \\
+\midrule
+\texttt{X[:, :d]} & tutte le righe, colonne da $0$ a $d-1$ (le prime $d$ feature) \\
+\texttt{X[:10]} & le prime 10 righe \\
+\texttt{X[:, 0]} & la prima colonna (vettore) \\
+\texttt{X[5:, 2:4]} & righe dalla 5 in poi, colonne 2 e 3 \\
+\bottomrule
+\end{tabular}
+\end{center}
+Regola: \texttt{a:b} include \texttt{a} ed \textbf{esclude} \texttt{b}; \texttt{:} da solo significa ``tutto''.
+
+\subsection{Restituire più valori}
+\begin{lstlisting}
+return X_train, y_train, X_test, y_test, w_star        # nella funzione
+X_tr, y_tr, X_te, y_te, w = make_synthetic(100, 2000, 500, 0.5, 0)   # chi la chiama
+\end{lstlisting}
+Python impacchetta i valori in una tupla e li ``spacchetta'' nell'ordine in cui li hai scritti.
+
+\subsection{Perché il check C dà circa 0,25}
+Con $\sigma = 0{,}5$ anche il vero $w^*$ sbaglia di $\sigma^2 = 0{,}25$ in media: è il \textbf{rischio di Bayes}
+per la square loss (statRisk p.~1--2). Nessun modello può fare meglio sul test: nei grafici sarà la linea orizzontale di riferimento.
+Il valore esatto ($0{,}256$) oscilla un po' perché il test ha un numero finito di esempi.
+
+\subsection*{Esercizi lezione 2}
+\begin{enumerate}
+  \item Che forma ha \texttt{rng.normal(size=(3, 4))}? E \texttt{X[:, :2]} se $X$ è $3\times4$?
+  \item Perché generiamo il test set con lo \emph{stesso} \texttt{rng} ma \emph{dopo} il training? Cosa garantisce?
+  \item Se metti \texttt{noise\_std=1.0}, a quanto deve tendere il check C?
+\end{enumerate}
+\subsection*{Soluzioni}
+\begin{enumerate}
+  \item $(3,4)$; $(3,2)$.
+  \item Le estrazioni sono indipendenti: nessun esempio è condiviso tra train e test (niente data leakage), e il seed rende tutto riproducibile.
+  \item A $1$ ($=\sigma^2$).
+\end{enumerate}
+\subsection*{Soluzioni dei TODO (scritte da te, verificate il 25/10)}
+\begin{lstlisting}
+X_train = rng.normal(size=(m, D))                             # TODO 1
+y_train = X_train @ w_star + noise_std * rng.normal(size=m)  # TODO 2
+return X[:, :d]                                               # TODO 3
+\end{lstlisting}
+Output: A forme corrette, B $(100,30)$, C $0{,}2564$, D \texttt{True}.
+\textbf{Pulizia:} la riga \texttt{raise NotImplementedError} rimasta dopo il \texttt{return} non viene mai eseguita (codice morto): cancellala.
 
 \end{document}

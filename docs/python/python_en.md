@@ -1,6 +1,6 @@
 # Python and numpy for Assignment 4
 
-> Version 1.1, 25/10/2026, lesson 1. Typeset PDF: `python_en.pdf`. Italiano: `python_it.md`.
+> Version 1.2, 25/10/2026, lessons 1-2. Typeset PDF: `python_en.pdf`. Italiano: `python_it.md`.
 
 #### How to use this guide.
 
@@ -195,3 +195,80 @@ def mse(X, y, w):
 ```
 
 Check outputs: A $=[1,1]$, B $=[1,10]$, C $\approx[1.0,\,0.01]$, D $\approx 2\cdot10^{-32}$ (numerical zero: the computer works with about 16 significant digits, so such a tiny value is a zero). **Lesson from check C:** on the same data the minimum-norm solution puts a weight of $10$, ridge $0.01$: this is the mechanism that removes the peak, seen on your own code.
+
+## Lesson 2: generating data (`src/data.py`)
+
+#### Why.
+
+To see double descent we need data whose “truth” we know: $y = w^{*\top}x + \text{noise}$, with $x \in \mathbb{R}^D$ ($D=500$ “weak” features), $m=100$ training examples and $2000$ test examples. The model uses only the first $d$ features: growing $d$ from $1$ to $500$ crosses the threshold $d=m$.
+
+## Reproducible random numbers: the seed
+
+``` python
+rng = np.random.default_rng(42)   # generator with seed 42
+a = rng.normal(size=3)            # 3 numbers from N(0,1)
+```
+
+- `rng` is a “generator” object. The same seed **always** gives the same sequence: reproducible experiments (an assignment requirement).
+
+- `rng.normal(size=...)` draws from a standard normal $N(0,1)$. `size` sets the shape: `size=5` gives a vector of 5 values, `size=(100, 500)` a $100\times 500$ matrix (a **tuple** in round brackets).
+
+- Noise with standard deviation $\sigma$: `sigma * rng.normal(size=m)`, because if $Z\sim N(0,1)$ then $\sigma Z \sim N(0,\sigma^2)$.
+
+## Normalizing a vector
+
+`w_star / np.linalg.norm(w_star)` divides every entry by the norm: the result has norm $1$. So the signal $w^{*\top}x$ has variance $1$ and the signal-to-noise ratio is controlled by $\sigma$ alone.
+
+## Slicing: taking a piece of a matrix
+
+<div class="center">
+
+| Code         | Meaning                                                 |
+|:-------------|:--------------------------------------------------------|
+| `X[:, :d]`   | all rows, columns $0$ to $d-1$ (the first $d$ features) |
+| `X[:10]`     | the first 10 rows                                       |
+| `X[:, 0]`    | the first column (a vector)                             |
+| `X[5:, 2:4]` | rows from 5 on, columns 2 and 3                         |
+
+</div>
+
+Rule: `a:b` includes `a` and **excludes** `b`; a bare `:` means “everything”.
+
+## Returning several values
+
+``` python
+return X_train, y_train, X_test, y_test, w_star        # inside the function
+X_tr, y_tr, X_te, y_te, w = make_synthetic(100, 2000, 500, 0.5, 0)   # caller
+```
+
+Python packs the values into a tuple and “unpacks” them in the order you wrote them.
+
+## Why check C gives about 0.25
+
+With $\sigma = 0.5$ even the true $w^*$ is off by $\sigma^2 = 0.25$ on average: this is the **Bayes risk** for the square loss (statRisk p. 1–2). No model can do better on the test set: in the plots it is the horizontal reference line. The exact value ($0.256$) fluctuates a little because the test set is finite.
+
+## Lesson 2 exercises
+
+1.  What is the shape of `rng.normal(size=(3, 4))`? And of `X[:, :2]` if $X$ is $3\times4$?
+
+2.  Why do we draw the test set with the *same* `rng` but *after* the training set? What does it guarantee?
+
+3.  With `noise_std=1.0`, what should check C approach?
+
+## Solutions
+
+1.  $(3,4)$; $(3,2)$.
+
+2.  The draws are independent: no example is shared between train and test (no data leakage), and the seed keeps everything reproducible.
+
+3.  $1$ ($=\sigma^2$).
+
+## TODO solutions (written by you, checked on 25/10)
+
+``` python
+X_train = rng.normal(size=(m, D))                             # TODO 1
+y_train = X_train @ w_star + noise_std * rng.normal(size=m)  # TODO 2
+return X[:, :d]                                               # TODO 3
+```
+
+Output: A correct shapes, B $(100,30)$, C $0.2564$, D `True`. **Clean-up:** the `raise NotImplementedError` line left after the `return` never runs (dead code): delete it.

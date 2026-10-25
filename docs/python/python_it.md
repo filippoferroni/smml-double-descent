@@ -1,6 +1,6 @@
 # Python e numpy per l'Assignment 4
 
-> Versione 1.1, 25/10/2026, lezione 1. PDF impaginato: `python_it.pdf`. English: `python_en.md`.
+> Versione 1.2, 25/10/2026, lezioni 1-2. PDF impaginato: `python_it.pdf`. English: `python_en.md`.
 
 #### Come usare questa guida.
 
@@ -195,3 +195,80 @@ def mse(X, y, w):
 ```
 
 Output dei controlli: A $=[1,1]$, B $=[1,10]$, C $\approx[1.0,\,0.01]$, D $\approx 2\cdot10^{-32}$ (zero numerico: il computer lavora con circa 16 cifre significative, quindi un valore così piccolo è uno zero). **Lezione dal check C:** sugli stessi dati la minima norma mette un peso pari a $10$, la ridge $0.01$: è il meccanismo che elimina il picco, visto sul tuo codice.
+
+## Lezione 2: generare dati (`src/data.py`)
+
+#### A cosa serve.
+
+Per vedere il double descent servono dati di cui conosciamo la “verità”: $y = w^{*\top}x + \text{rumore}$, con $x \in \mathbb{R}^D$ ($D=500$ feature “deboli”), $m=100$ esempi di training e $2000$ di test. Il modello userà solo le prime $d$ feature: facendo crescere $d$ da $1$ a $500$ attraversiamo la soglia $d=m$.
+
+## Numeri casuali riproducibili: il seed
+
+``` python
+rng = np.random.default_rng(42)   # generatore con seed 42
+a = rng.normal(size=3)            # 3 numeri da N(0,1)
+```
+
+- `rng` è un oggetto “generatore”. Lo stesso seed produce **sempre** la stessa sequenza: esperimenti riproducibili (requisito dell’assignment).
+
+- `rng.normal(size=...)` estrae da una normale standard $N(0,1)$. `size` decide la forma: `size=5` dà un vettore di 5 valori, `size=(100, 500)` una matrice $100\times 500$ (una **tupla** tra parentesi tonde).
+
+- Rumore con deviazione standard $\sigma$: `sigma * rng.normal(size=m)`, perché se $Z\sim N(0,1)$ allora $\sigma Z \sim N(0,\sigma^2)$.
+
+## Normalizzare un vettore
+
+`w_star / np.linalg.norm(w_star)` divide ogni componente per la norma: il risultato ha norma $1$. Così il segnale $w^{*\top}x$ ha varianza $1$ e il rapporto segnale/rumore è controllato solo da $\sigma$.
+
+## Slicing: prendere un pezzo di matrice
+
+<div class="center">
+
+| Codice       | Significato                                                   |
+|:-------------|:--------------------------------------------------------------|
+| `X[:, :d]`   | tutte le righe, colonne da $0$ a $d-1$ (le prime $d$ feature) |
+| `X[:10]`     | le prime 10 righe                                             |
+| `X[:, 0]`    | la prima colonna (vettore)                                    |
+| `X[5:, 2:4]` | righe dalla 5 in poi, colonne 2 e 3                           |
+
+</div>
+
+Regola: `a:b` include `a` ed **esclude** `b`; `:` da solo significa “tutto”.
+
+## Restituire più valori
+
+``` python
+return X_train, y_train, X_test, y_test, w_star        # nella funzione
+X_tr, y_tr, X_te, y_te, w = make_synthetic(100, 2000, 500, 0.5, 0)   # chi la chiama
+```
+
+Python impacchetta i valori in una tupla e li “spacchetta” nell’ordine in cui li hai scritti.
+
+## Perché il check C dà circa 0,25
+
+Con $\sigma = 0{,}5$ anche il vero $w^*$ sbaglia di $\sigma^2 = 0{,}25$ in media: è il **rischio di Bayes** per la square loss (statRisk p. 1–2). Nessun modello può fare meglio sul test: nei grafici sarà la linea orizzontale di riferimento. Il valore esatto ($0{,}256$) oscilla un po’ perché il test ha un numero finito di esempi.
+
+## Esercizi lezione 2
+
+1.  Che forma ha `rng.normal(size=(3, 4))`? E `X[:, :2]` se $X$ è $3\times4$?
+
+2.  Perché generiamo il test set con lo *stesso* `rng` ma *dopo* il training? Cosa garantisce?
+
+3.  Se metti `noise_std=1.0`, a quanto deve tendere il check C?
+
+## Soluzioni
+
+1.  $(3,4)$; $(3,2)$.
+
+2.  Le estrazioni sono indipendenti: nessun esempio è condiviso tra train e test (niente data leakage), e il seed rende tutto riproducibile.
+
+3.  A $1$ ($=\sigma^2$).
+
+## Soluzioni dei TODO (scritte da te, verificate il 25/10)
+
+``` python
+X_train = rng.normal(size=(m, D))                             # TODO 1
+y_train = X_train @ w_star + noise_std * rng.normal(size=m)  # TODO 2
+return X[:, :d]                                               # TODO 3
+```
+
+Output: A forme corrette, B $(100,30)$, C $0{,}2564$, D `True`. **Pulizia:** la riga `raise NotImplementedError` rimasta dopo il `return` non viene mai eseguita (codice morto): cancellala.
