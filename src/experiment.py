@@ -35,11 +35,16 @@ def run_synthetic(d_values, m=100, m_test=2000, D=500, noise_std=0.5, alpha=None
             #           w = ...
             #       else:
             #           w = ...
-            w = None
+            if alpha is None:
+                w = fit_least_squares(X_tr_d, y_train)
+            else:
+                w = fit_ridge(X_tr_d, y_train, alpha)
 
             # TODO 2: store the three numbers in row s, column j.
             # Hint: train_err[s, j] = mse(X_tr_d, y_train, w); same idea for test, and np.linalg.norm(w)
-            pass
+            train_err[s, j] = mse(X_tr_d, y_train, w)
+            test_err[s, j] = mse(X_te_d, y_test, w)
+            w_norm[s, j] = np.linalg.norm(w)
 
     # Average over the seeds (axis=0 = down the rows): one value per d
     return train_err.mean(axis=0), test_err.mean(axis=0), w_norm.mean(axis=0)
@@ -69,3 +74,4 @@ if __name__ == "__main__":
     fig.tight_layout()
     fig.savefig("first_double_descent.png", dpi=150)
     print("Plot saved to first_double_descent.png")
+
